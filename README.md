@@ -32,5 +32,8 @@ pip install -r requirements.txt
 
 ## Details
 
-Do not spend too much time on any one part of the project. We will be reviewing your code together during the interview. Keep stuff simple and focused on the main objectives.
+Do not spend too much time on any one part of the project. We will be reviewing your code together during the interview. Keep stuff simple and focused on the main objectives. <b> Even if you don't finish everything, that's completely okay! </b> Simply try to think about what you would have done in that case.
 
+## Additional resources
+
+If you want to learn more about library we use to generate the data and interact with the power grid, check out the [Grid2op Documentation](https://grid2op.readthedocs.io/en/latest/). Do not go too deep into the details as the focus should be on the overall workflow and not how to generate the data.
