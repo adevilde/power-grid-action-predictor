@@ -9,22 +9,23 @@ from grid2op.Action import BaseAction
 from tqdm import tqdm
 
 
-def extract_features(obs: BaseObservation) -> dict:
+def extract_features(obs: BaseObservation) -> pl.DataFrame:
     """
-    Note : The shapes are different between the features.
+    Note : The shapes are different between the features, so we store each feature
+    vector in its own column.
     """
-    return pl.from_numpy(
-        np.concatenate(
-            [
-                obs.gen_p,
-                obs.gen_q,
-                obs.load_p,
-                obs.load_q,
-                obs.topo_vect,
-                obs.rho,
-            ]
-        )
-    ).transpose()
+    def expand(prefix: str, values: np.ndarray) -> dict[str, list[float]]:
+        return {f"{prefix}{idx + 1}": [val] for idx, val in enumerate(values)}
+
+    column_values = {}
+    column_values.update(expand("gen_p", obs.gen_p))
+    column_values.update(expand("gen_q", obs.gen_q))
+    column_values.update(expand("load_p", obs.load_p))
+    column_values.update(expand("load_q", obs.load_q))
+    column_values.update(expand("topo_vect", obs.topo_vect))
+    column_values.update(expand("rho", obs.rho))
+
+    return pl.DataFrame(column_values)
 
 
 def create_realistic_observation(

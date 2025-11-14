@@ -4,3 +4,6 @@ polars==1.33.1
 numpy==2.3.3
 tqdm==4.67.1
 pyarrow==21.0.0
+pytest==8.3.2
+matplotlib==3.9.2
+scikit-learn==1.5.2
