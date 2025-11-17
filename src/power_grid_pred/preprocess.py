@@ -1,4 +1,5 @@
 import polars as pl
+import numpy as np
 from typing import Tuple
 from sklearn.model_selection import train_test_split
 
@@ -53,29 +54,30 @@ def build_preprocessed_dataset(force: bool = False) -> pl.DataFrame:
     df_features, df_targets = load_raw()
     target_cols = df_targets.columns
 
-    keep_cols = []
-    for c in target_cols:
-        has_finite = df_targets.select(pl.col(c).is_finite().any()).item()
-        if has_finite:
-            keep_cols.append(c)
+    # Compute rho_cap = max finite rho over all actions, with 10% margin.
+    # We convert to numpy for simplicity.
+    pdf_targets = df_targets.to_pandas()
+    vals = pdf_targets.values
+    finite_mask = np.isfinite(vals)
 
-    dropped_cols = set(target_cols) - set(keep_cols)
-    if dropped_cols:
-        print(f"Dropping {len(dropped_cols)} action columns with only non-finite values:")
-        print(", ".join(sorted(dropped_cols)))
+    max_finite = vals[finite_mask].max()
+    rho_cap = float(max_finite + 5) # high rho for worst-case replacement
 
-    df_targets = df_targets.select(keep_cols)
-    target_cols = keep_cols
+    print(f"Replacing inf in targets with rho_cap = {rho_cap:.3f}")
+
+    # Replace non-finite values in Polars
+    df_targets_clean = df_targets.with_columns(
+        [
+            pl.when(pl.col(c).is_finite())
+            .then(pl.col(c))
+            .otherwise(rho_cap)
+            .alias(c)
+            for c in target_cols
+        ]
+    )
 
     # Combine horizontally: one row per observation, feature columns + action target columns
-    df = pl.concat([df_features, df_targets], how="horizontal")
-
-    if target_cols:
-        df = df.filter(
-            pl.all_horizontal([pl.col(c).is_finite() for c in target_cols])
-        )
-    else:
-        raise ValueError("No target columns left after filtering non-finite actions.")
+    df = pl.concat([df_features, df_targets_clean], how="horizontal")
 
     df.write_parquet(CACHED_DATASET)
     print(f"Processed dataset saved to {CACHED_DATASET}")

@@ -18,6 +18,7 @@ RAW_DIR.mkdir(parents=True, exist_ok=True)
 
 RAW_FEATURES = RAW_DIR / "df_features.parquet"
 RAW_TARGETS = RAW_DIR / "df_targets.parquet"
+RAW_ACTIONS = RAW_DIR / "all_actions.npy"
 
 
 def extract_features(obs: BaseObservation) -> pl.DataFrame:
@@ -105,7 +106,8 @@ def create_training_data(
 def _run_simulation(
     env_name: str = "l2rpn_case14_sandbox",
     episode_count: int = 2,
-    n_actions: int = 100
+    n_actions: int = 100,
+    save_actions_path: Path = RAW_ACTIONS,
 ) -> tuple[pl.DataFrame, pl.DataFrame]:
     """
     Launch a grid2op environment, sample random actions, and gather the
@@ -115,6 +117,7 @@ def _run_simulation(
         env_name: Name of the grid2op environment to instantiate.
         episode_count: Number of episodes to simulate when collecting observations.
         n_actions: Number of random actions to sample per observation (plus the do-nothing action).
+        save_actions_path: Optional path where the sampled actions are persisted as vectors.
 
     Returns:
         Tuple of (df_features, df_targets) where df_features contains flattened
@@ -124,6 +127,11 @@ def _run_simulation(
 
     all_actions = [env.action_space.sample() for _ in range(n_actions)]
     all_actions.append(env.action_space())
+
+    if save_actions_path is not None:
+        save_actions_path.parent.mkdir(parents=True, exist_ok=True)
+        stacked_actions = np.vstack([act.to_vect() for act in all_actions])
+        np.save(save_actions_path, stacked_actions)
 
     list_obs = create_realistic_observation(episode_count, env)
     df_features, df_targets = create_training_data(list_obs, all_actions)
@@ -151,7 +159,8 @@ def generate_data(
         print("Raw data already exists in data/raw/. Skipping simulation.")
         return
 
-    print("Running grid simulation to create training data...")
+    print("Running grid simulation to create training data with")
+    print(f"- {episode_count} episodes \n- {n_actions} actions")
     df_features, df_targets = _run_simulation(env_name, episode_count, n_actions)
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     df_features.write_parquet(RAW_FEATURES)
@@ -164,8 +173,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", default="False", help="Force regeneration of raw data")
+    parser.add_argument("--n_episodes", type=int, default=2, help="Number of episodes simulated when generating observations")
+    parser.add_argument("--n_actions", type=int, default=100, help="Number of random actions scored for each observation")
     args = parser.parse_args()
-    # Convert "True"/"False" to a boolean
     force_flag = str(args.force).lower() == "true"
 
-    generate_data(force=force_flag)
+    generate_data(episode_count=args.n_episodes, n_actions=args.n_actions, force=force_flag)

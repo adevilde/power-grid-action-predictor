@@ -7,6 +7,7 @@ from .preprocess import train_test_split_dataset, PROC_DIR
 MODEL_PATH = PROC_DIR/"model.joblib"
 
 def train_model() -> dict:
+    """Train a RandomForestRegressor and persist it alongside evaluation metrics."""
     X_train, X_test, y_train, y_test = train_test_split_dataset()
 
     model = RandomForestRegressor(

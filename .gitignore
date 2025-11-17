@@ -1,6 +1,8 @@
 dev
 .venv
 __pycache__
+.coverage
 *.egg-info
 *.joblib
 *.parquet
+*.npy
