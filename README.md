@@ -75,6 +75,14 @@ while the `Makefile` orchestrates the main entry points of the workflow using si
 
 This section describes the full workflow implemented in the project and explains how each step can be executed through the `Makefile`. Each stage corresponds to one of the core modules of the `power_grid_pred` package.
 
+## **2.0. Environment bootstrap (`make init`)**
+
+Before running any pipeline steps, create a dedicated virtual environment and install the project in editable mode:
+
+* `make init` — uses `uv` to create a Python 3.12 virtual environment under `.venv/`. Then it installs the pinned dependencies from `requirements.txt`, and installs `power_grid_pred` with `pip install -e .` so local code edits are immediately available.
+
+Activate `.venv/bin/activate` (or let your IDE use it automatically) before invoking other `make` targets to ensure the correct interpreter and dependencies are used everywhere.
+
 ## **2.1. Raw Data Generation (`generate_data.py`)**
 
 * Uses Grid2Op + LightSimBackend to simulate real grid operations

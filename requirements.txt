@@ -1,9 +1,11 @@
 grid2op==1.12.1
 lightsim2grid==0.10.3
 polars==1.33.1
-numpy==2.3.3
+numpy==2.0.2
+numba==0.60.0
 tqdm==4.67.1
 pyarrow==21.0.0
 pytest==8.3.2
+pytest-cov==5.0.0
 matplotlib==3.9.2
 scikit-learn==1.5.2
