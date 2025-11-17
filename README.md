@@ -1,4 +1,4 @@
-# Interview Lab : Power Grid Action Predictor
+# Power Grid Action Predictor — Interview Lab
 
 Welcome! This lab is designed to assess your skills in structuring a data science project, processing data, training a model, and ensuring your code is reliable through testing.
 
@@ -20,20 +20,172 @@ The model should be able to see a grid state (in the form of a feature vector) a
 
 We do not provide a thorough set of instructions for each step, feel free to make decisions about the implementation details. There is no right or wrong way to approach this.
 
-## Setup
 
-We do not provide a complete project structure. You will need to create the necessary directories and files yourself. Feel free to use the tools and libraries you are comfortable with.
+---
 
-The requirements for this project are listed in the `requirements.txt` file. You can install them using `pip` and `python 3.12`:
+# 1. Project Structure (My Implementation)
+
+My solution is organized as a small Python package under `src/power_grid_pred`, containing:
 
 ```
-pip install -r requirements.txt
+src/power_grid_pred/
+│
+├── generate_data.py   # Run Grid2Op simulation & save raw data
+├── preprocess.py      # Merge features/targets + handle infinities
+├── model.py           # Train & load the regression model
+├── visualize.py       # Generate figures from data & predictions
+│
+└── __init__.py
 ```
 
-## Details
+All data artifacts are stored under:
 
-Do not spend too much time on any one part of the project. We will be reviewing your code together during the interview. Keep stuff simple and focused on the main objectives. <b> Even if you don't finish everything, that's completely okay! </b> Simply try to think about what you would have done in that case.
+```
+data/
+├── raw/         # Parquet files created directly by Grid2Op
+├── processed/   # Cleaned dataset + trained model
+└── figures/     # Visualizations
+```
 
-## Additional resources
+Tests live in:
 
-If you want to learn more about library we use to generate the data and interact with the power grid, check out the [Grid2op Documentation](https://grid2op.readthedocs.io/en/latest/). Do not go too deep into the details as the focus should be on the overall workflow and not how to generate the data.
+```
+tests/
+├── test_generate_data.py   # Tests for data generation & caching
+├── test_preprocess.py      # Tests for preprocessing logic
+├── test_model.py           # Tests for model training & loading
+```
+
+At the project root, there are also:
+```
+├── Makefile        # Convenience commands to run the full pipeline (generate, preprocess, train, visualize, test)
+├── pyproject.toml  # Package configuration so power_grid_pred can be installed (e.g. pip install -e .)
+├── requirements.txt # Python dependencies
+├── .gitignore      # Excludes caches, artifacts, and data outputs from version control
+├── visualize_data.ipynb # Notebook for quick exploratory analysis / prototyping plots
+└── README.md       # This documentation
+```
+
+The `pyproject.toml` defines `src/` as the source layout and exposes `power_grid_pred` as an installable package,  
+while the `Makefile` orchestrates the main entry points of the workflow using simple `make` commands.
+
+---
+
+# 2. End-to-End Workflow (with Makefile Commands)
+
+This section describes the full workflow implemented in the project and explains how each step can be executed through the `Makefile`. Each stage corresponds to one of the core modules of the `power_grid_pred` package.
+
+## **2.1. Raw Data Generation (`generate_data.py`)**
+
+* Uses Grid2Op + LightSimBackend to simulate real grid operations
+* Extracts features from each observation
+* Computes the effect of each action (max rho)
+* Saves two parquet files, and actions in numpy format:
+
+  * `df_features.parquet`
+  * `df_targets.parquet`
+  * `all_actions.npy`
+
+Makefile command to run this step:
+
+```
+make generate_data
+```
+
+Optional arguments:
+
+| Variable     | Meaning                                       | Example                            |
+| ------------ | --------------------------------------------- | ---------------------------------- |
+| `FORCE`      | Force regeneration even if cached files exist | `make generate_data FORCE=True`    |
+| `EPISODES` | Number of simulated episodes                  | `make generate_data EPISODES=3`  |
+| `ACTIONS`  | Number of actions evaluated per state         | `make generate_data ACTIONS=150` |
+
+
+## **2.2. Preprocess data (`preprocess.py`)**
+
+* Loads raw features + targets
+* Handles `inf` values by replacing them with a capped finite threshold
+* Creates a joined, clean dataframe
+* Stores the results in: `data/processed/dataset.parquet`
+
+This clean dataset is used for training.
+
+Makedfile command to run this step:
+
+```
+make preprocess
+```
+
+Optional arguments:
+| Variable | Meaning                                       | Example                            |
+| -------- | --------------------------------------------- | ---------------------------------- |   
+| `FORCE`  | Force regeneration even if cached files exist | `make preprocess FORCE=True`      |
+
+
+## **2.3. Train the model (`model.py`)**
+
+* Loads the processed dataset
+* Splits into train/test sets
+* Trains a **multi-output regressor** (Random Forest)
+* Computes evaluation metrics (RMSE, MAE, R2)
+* Saves the model as: `data/processed/model.joblib`
+
+A helper function allows reloading the trained model easily.
+
+Makefile command to run this step:
+
+```
+make train_model
+```
+
+## **2.4. Generate visualizations (`visualize.py`)**
+
+Includes multiple figures such as:
+
+* RMSE per action
+* True vs predicted rho for a subset of actions
+* Stackplots to evaluate overall prediction distribution
+
+Figures are saved in: `data/figures/`
+
+Makefile command to run this step:
+
+```
+make viz
+```
+
+### **2.4b. Explore via notebook (`visualize_data.ipynb`)**
+
+For quick, informal data checks you can open `visualize_data.ipynb` after running `make preprocess`. The notebook loads the cached dataset, lets you slice specific features/targets, and prototype plots before porting finalized visuals into `visualize.py`.
+
+## **2.5. Run the test suite**
+
+Tests cover:
+
+* data generation (with mocks)
+* caching logic
+* preprocessing rules
+* model training + model loading
+
+```
+make test
+```
+
+Runs all unit tests using Python's built-in unittest framework and pytest and prints line coverage.
+
+Notes:
+- Tests are written with unittest and pytest.
+- The coverage report prints per-file line coverage and a summary.
+- Individual tests can be run manually, e.g.:
+    ```
+    PYTHONPATH=src python -m pytest [test_file] -k [test_name]
+    ```
+- Currently, the tests do not exercise the top-level "if __name__ == '__main__':" blocks in each script.
+- You can enable more verbose output by adding `-v` to the unittest command in the Makefile.
+
+---
+
+# 📚 Additional Resources
+
+Grid2Op documentation:
+[https://grid2op.readthedocs.io/en/latest/](https://grid2op.readthedocs.io/en/latest/)
