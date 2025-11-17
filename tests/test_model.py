@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import polars as pl
 import numpy as np
 import pytest
 
@@ -20,6 +21,24 @@ class DummyRegressor:
         X = np.asarray(X, dtype=float)
         mean = self.mean_ if self.mean_ is not None else np.zeros(1, dtype=float)
         return np.tile(mean, (X.shape[0], 1))
+
+
+def test_train_test_split_shapes(tmp_path):
+    df = pl.DataFrame(
+        {
+            "f1": [1, 2, 3, 4],
+            "f2": [0.1, 0.2, 0.3, 0.4],
+            "action_0": [0.5, 0.6, 0.7, 0.8],
+            "action_1": [1.1, 1.2, 1.3, 1.4],
+        }
+    )
+
+    with patch.object(ml, "build_preprocessed_dataset", return_value=df):
+        X_train, X_test, y_train, y_test = ml.train_test_split_dataset()
+
+    assert X_train.shape[0] + X_test.shape[0] == 4
+    assert y_train.ndim == 2
+    assert y_test.ndim == 2
 
 
 def test_train_model_and_load(tmp_path):

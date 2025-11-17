@@ -1,3 +1,5 @@
+import ast
+from pathlib import Path
 from unittest.mock import patch
 
 import polars as pl
@@ -26,27 +28,6 @@ def test_build_dataset_replaces_non_finite_targets(tmp_path):
     assert df.height == 3
     assert df["action_0"].to_list() == [1.0, 2.0, 3.0]
     assert df["action_1"].to_list() == [8.0, 8.0, 8.0]  # rho_cap = max_finite(3) + 5
-
-
-def test_train_test_split_shapes(tmp_path):
-    df = pl.DataFrame(
-        {
-            "f1": [1, 2, 3, 4],
-            "f2": [0.1, 0.2, 0.3, 0.4],
-            "action_0": [0.5, 0.6, 0.7, 0.8],
-            "action_1": [1.1, 1.2, 1.3, 1.4],
-        }
-    )
-
-    dataset_path = tmp_path / "dataset.parquet"
-    df.write_parquet(dataset_path)
-
-    with patch.object(pp, "CACHED_DATASET", dataset_path):
-        X_train, X_test, y_train, y_test = pp.train_test_split_dataset()
-
-    assert X_train.shape[0] + X_test.shape[0] == 4
-    assert y_train.ndim == 2
-    assert y_test.ndim == 2
 
 
 def test_load_raw_reads_parquet(tmp_path):
@@ -92,3 +73,17 @@ def test_build_preprocessed_dataset_errors_when_no_targets(tmp_path):
     ):
         with pytest.raises(ValueError):
             pp.build_preprocessed_dataset(force=True)
+
+
+def test_build_preprocessed_dataset_uses_cached_file(tmp_path):
+    cached_df = pl.DataFrame({"f1": [1.0, 2.0], "action_0": [0.5, 0.6]})
+    dataset_path = tmp_path / "dataset.parquet"
+    cached_df.write_parquet(dataset_path)
+
+    with patch.object(pp, "CACHED_DATASET", dataset_path), patch.object(
+        pp, "load_raw"
+    ) as mock_load:
+        result = pp.build_preprocessed_dataset(force=False)
+
+    assert mock_load.call_count == 0
+    assert result.to_dict(as_series=False) == cached_df.to_dict(as_series=False)

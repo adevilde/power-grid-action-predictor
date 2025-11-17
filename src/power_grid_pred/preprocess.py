@@ -1,7 +1,6 @@
 import polars as pl
 import numpy as np
 from typing import Tuple
-from sklearn.model_selection import train_test_split
 
 from .generate_data import DATA_DIR, RAW_DIR
 
@@ -83,36 +82,6 @@ def build_preprocessed_dataset(force: bool = False) -> pl.DataFrame:
     print(f"Processed dataset saved to {CACHED_DATASET}")
     print(f"Kept {df.height} rows after removing non-finite targets.")
     return df
-
-
-def train_test_split_dataset(
-    test_size: float = 0.2,
-    random_state: int = 0
-): 
-    """
-    Load (or build) the processed dataset and split it into train/test sets
-    compatible with scikit-learn estimators.
-
-    Args:
-        test_size: Fraction of the dataset to allocate to the test split.
-        random_state: PRNG seed forwarded to `train_test_split` for reproducibility.
-
-    Returns:
-        `(X_train, X_test, y_train, y_test)` pandas DataFrames produced by
-        `sklearn.model_selection.train_test_split`.
-    """
-    df = build_preprocessed_dataset()
-    pandas_df = df.to_pandas()
-
-    target_cols = [c for c in pandas_df.columns if c.startswith("action_")]
-    feature_cols = [c for c in pandas_df.columns if c not in target_cols]
-
-    X = pandas_df[feature_cols]
-    y = pandas_df[target_cols]
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
-
-    return X_train, X_test, y_train, y_test
     
 
 if __name__ == "__main__":
